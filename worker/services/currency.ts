@@ -2,6 +2,20 @@ import type { DB } from '../db';
 import { exchangeRates } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 
+/**
+ * Оптимизированный сервис для работы с валютными курсами
+ * 
+ * Вместо хранения всех 12 пар валют (4×3), мы храним только 3 базовых курса относительно USD:
+ * - USD-EUR
+ * - USD-KZT
+ * - USD-BTC
+ * 
+ * Все кросс-курсы (например EUR-KZT, BTC-EUR) вычисляются автоматически через USD:
+ * EUR-KZT = (USD-KZT) / (USD-EUR)
+ * 
+ * Это уменьшает количество API запросов и записей в БД в 4 раза!
+ */
+
 // Поддерживаемые валюты: KZT, USD, EUR, BTC
 export type SupportedCurrency = 'KZT' | 'USD' | 'EUR' | 'BTC';
 
@@ -16,12 +30,11 @@ export class CurrencyService {
     this.db = db;
   }
 
-  // Получить курс обмена с кешированием
-  async getExchangeRate(from: SupportedCurrency, to: SupportedCurrency): Promise<number> {
-    // Одинаковые валюты
-    if (from === to) return 1;
-
-    const pairId = `${from}-${to}`;
+  // Получить базовый курс относительно USD из кеша
+  private async getBaseRate(currency: SupportedCurrency): Promise<number | null> {
+    if (currency === 'USD') return 1;
+    
+    const pairId = `USD-${currency}`;
     
     // Проверка кеша (действителен 1 час)
     const cached = await this.db
@@ -35,20 +48,21 @@ export class CurrencyService {
       )
       .get();
 
-    if (cached) {
-      return cached.rate;
-    }
+    return cached ? cached.rate : null;
+  }
 
-    // Получить свежий курс
-    const rate = await this.fetchExchangeRate(from, to);
+  // Сохранить базовый курс в кеш
+  private async saveBaseRate(currency: SupportedCurrency, rate: number): Promise<void> {
+    if (currency === 'USD') return;
     
-    // Кешировать курс
+    const pairId = `USD-${currency}`;
+    
     await this.db
       .insert(exchangeRates)
       .values({
         id: pairId,
-        fromCurrency: from,
-        toCurrency: to,
+        fromCurrency: 'USD',
+        toCurrency: currency,
         rate,
         source: 'exchangerate-api',
         lastUpdated: new Date(),
@@ -61,30 +75,47 @@ export class CurrencyService {
         },
       })
       .run();
+  }
 
+  // Получить курс обмена с кешированием (оптимизированная версия)
+  async getExchangeRate(from: SupportedCurrency, to: SupportedCurrency): Promise<number> {
+    // Одинаковые валюты
+    if (from === to) return 1;
+
+    // Проверяем кеш для базовых курсов
+    let fromRate = await this.getBaseRate(from);
+    let toRate = await this.getBaseRate(to);
+
+    // Если нет в кеше, загружаем из API
+    if (fromRate === null) {
+      fromRate = from === 'USD' ? 1 : await this.fetchExchangeRate('USD', from);
+      await this.saveBaseRate(from, fromRate);
+    }
+
+    if (toRate === null) {
+      toRate = to === 'USD' ? 1 : await this.fetchExchangeRate('USD', to);
+      await this.saveBaseRate(to, toRate);
+    }
+
+    // Вычисляем кросс-курс через USD
+    // from -> USD -> to
+    // Например: EUR -> USD -> KZT = (USD/EUR) * (KZT/USD) = KZT/EUR
+    const rate = toRate / fromRate;
+    
     return rate;
   }
 
-  // Получить курс обмена через бесплатные API
-  private async fetchExchangeRate(from: SupportedCurrency, to: SupportedCurrency): Promise<number> {
+  // Получить курс USD -> currency через бесплатные API
+  private async fetchExchangeRate(from: 'USD', to: SupportedCurrency): Promise<number> {
     try {
-      const isCrypto = (currency: string) => currency === 'BTC';
-      const fromIsCrypto = isCrypto(from);
-      const toIsCrypto = isCrypto(to);
-
-      // BTC -> Фиат
-      if (fromIsCrypto && !toIsCrypto) {
-        return await this.fetchCryptoToFiat('BTC', to);
+      // USD -> BTC (крипто)
+      if (to === 'BTC') {
+        const btcToUsd = await this.fetchCryptoToFiat('BTC', 'USD');
+        return 1 / btcToUsd; // USD -> BTC
       }
 
-      // Фиат -> BTC
-      if (!fromIsCrypto && toIsCrypto) {
-        const rate = await this.fetchCryptoToFiat('BTC', from);
-        return 1 / rate;
-      }
-
-      // Оба фиатные валюты - используем ExchangeRate-API
-      return await this.fetchFiatRate(from, to);
+      // USD -> Фиат (EUR, KZT)
+      return await this.fetchFiatRate('USD', to);
     } catch (error) {
       console.error(`Error fetching exchange rate for ${from}-${to}:`, error);
       throw error;
@@ -161,21 +192,39 @@ export class CurrencyService {
     return rates;
   }
 
-  // Обновить все кешированные курсы (вызывается cron каждые 10 минут)
+  // Обновить все базовые курсы (оптимизировано - только 3 пары вместо 12)
   async refreshAllRates(): Promise<void> {
-    const currencies: SupportedCurrency[] = ['USD', 'EUR', 'KZT', 'BTC'];
+    const currencies: SupportedCurrency[] = ['EUR', 'KZT', 'BTC'];
     
-    for (const from of currencies) {
-      for (const to of currencies) {
-        if (from !== to) {
-          try {
-            await this.getExchangeRate(from, to);
-            console.log(`✓ Refreshed rate: ${from}-${to}`);
-          } catch (error) {
-            console.error(`✗ Failed to refresh ${from}-${to}:`, error);
-          }
-        }
+    // Обновляем только базовые курсы относительно USD
+    for (const currency of currencies) {
+      try {
+        const rate = await this.fetchExchangeRate('USD', currency);
+        await this.saveBaseRate(currency, rate);
+        console.log(`✓ Refreshed base rate: USD-${currency} = ${rate}`);
+      } catch (error) {
+        console.error(`✗ Failed to refresh USD-${currency}:`, error);
       }
+    }
+    
+    console.log('✓ All base rates refreshed. Cross rates will be calculated on demand.');
+  }
+
+  // Очистить старые неиспользуемые записи (оставляем только базовые курсы USD-*)
+  async cleanupOldRates(): Promise<void> {
+    try {
+      // Удаляем все записи, которые НЕ являются базовыми курсами (fromCurrency != 'USD')
+      // или слишком старые (> 24 часов)
+      await this.db
+        .delete(exchangeRates)
+        .where(
+          sql`${exchangeRates.fromCurrency} != 'USD' OR ${exchangeRates.lastUpdated} < unixepoch() - 86400`
+        )
+        .run();
+      
+      console.log('✓ Cleaned up old exchange rate records');
+    } catch (error) {
+      console.error('✗ Failed to cleanup old rates:', error);
     }
   }
 }

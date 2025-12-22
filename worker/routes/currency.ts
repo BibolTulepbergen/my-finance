@@ -11,10 +11,9 @@ type Variables = {
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-// Get exchange rate
+// Get exchange rate (public endpoint - no auth required)
 app.get(
   '/rate',
-  authMiddleware,
   zValidator(
     'query',
     z.object({
@@ -28,7 +27,13 @@ app.get(
 
     try {
       const rate = await currencyService.getExchangeRate(from, to);
-      return c.json({ from, to, rate });
+      return c.json({ 
+        id: `${from}-${to}`,
+        fromCurrency: from,
+        toCurrency: to,
+        rate,
+        lastUpdated: new Date().toISOString()
+      });
     } catch (error) {
       return c.json({ error: 'Failed to fetch exchange rate' }, 500);
     }

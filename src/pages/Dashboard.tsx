@@ -22,6 +22,7 @@ import {
   Settings,
   Receipt,
   Add as AddIcon,
+  ShowChart,
 } from '@mui/icons-material';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AccountList } from '../components/accounts/AccountList';
@@ -29,6 +30,7 @@ import { AccountForm } from '../components/accounts/AccountForm';
 import { UserSettings } from '../components/settings/UserSettings';
 import { EmailVerificationBanner } from '../components/auth/EmailVerificationBanner';
 import { Transactions } from './Transactions';
+import { CurrencyRates } from './CurrencyRates';
 import { TransactionModal } from '../components/transactions/TransactionModal';
 import { accountApi } from '../lib/api';
 import type { Account } from '../lib/types';
@@ -38,6 +40,7 @@ const DRAWER_WIDTH = 240;
 const menuItems = [
   { path: '/', label: 'Счета', icon: <AccountBalanceWallet /> },
   { path: '/transactions', label: 'Транзакции', icon: <Receipt /> },
+  { path: '/currency-rates', label: 'Курсы валют', icon: <ShowChart /> },
   { path: '/settings', label: 'Настройки', icon: <Settings /> },
 ];
 
@@ -204,6 +207,7 @@ export function Dashboard() {
               }
             />
             <Route path="/transactions" element={<Transactions key={refreshKey} />} />
+            <Route path="/currency-rates" element={<CurrencyRates />} />
             <Route path="/settings" element={<UserSettings />} />
           </Routes>
         </Container>

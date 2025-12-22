@@ -81,11 +81,13 @@ export const budgets = sqliteTable('budgets', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
-// Exchange rates table - курсы валют из yahoo-finance2
+// Exchange rates table - оптимизированная таблица курсов валют
+// Хранит только базовые курсы относительно USD (USD-EUR, USD-KZT, USD-BTC)
+// Кросс-курсы вычисляются автоматически в CurrencyService
 export const exchangeRates = sqliteTable('exchange_rates', {
-  id: text('id').primaryKey(),
-  fromCurrency: text('from_currency').notNull(), // KZT, USD, EUR, BTC
-  toCurrency: text('to_currency').notNull(), // KZT, USD, EUR, BTC
+  id: text('id').primaryKey(), // Формат: "USD-EUR", "USD-KZT", "USD-BTC"
+  fromCurrency: text('from_currency').notNull(), // Всегда USD для базовых курсов
+  toCurrency: text('to_currency').notNull(), // EUR, KZT, BTC
   rate: real('rate').notNull(),
   source: text('source').notNull().default('yahoo-finance'), // Источник данных
   lastUpdated: integer('last_updated', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),

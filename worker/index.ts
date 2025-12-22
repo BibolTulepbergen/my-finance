@@ -57,5 +57,10 @@ export default {
     console.log('Running scheduled task: refreshing exchange rates');
     await currencyService.refreshAllRates();
     console.log('Exchange rates refreshed successfully');
+    
+    // Очищаем старые неиспользуемые записи
+    console.log('Cleaning up old exchange rate records');
+    await currencyService.cleanupOldRates();
+    console.log('Cleanup completed');
   },
 };
