@@ -161,7 +161,7 @@ export class CurrencyService {
     return rates;
   }
 
-  // Обновить все кешированные курсы (вызывается cron каждый час)
+  // Обновить все кешированные курсы (вызывается cron каждые 10 минут)
   async refreshAllRates(): Promise<void> {
     const currencies: SupportedCurrency[] = ['USD', 'EUR', 'KZT', 'BTC'];
     
