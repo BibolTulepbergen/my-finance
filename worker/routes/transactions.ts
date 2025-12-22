@@ -216,7 +216,6 @@ app.post('/income', authMiddleware, zValidator('json', createIncomeSchema), asyn
 app.post('/transfer', authMiddleware, zValidator('json', createTransferSchema), async (c) => {
   const userId = getUserId(c);
   const db = c.get('db');
-  const currencyService = c.get('currencyService');
   const data = c.req.valid('json');
 
   // Verify both accounts belong to user
@@ -449,9 +448,9 @@ app.get('/stats/summary', authMiddleware, async (c) => {
     .groupBy(transactions.type)
     .all();
 
-  const income = stats.find((s) => s.type === 'income');
-  const expense = stats.find((s) => s.type === 'expense');
-  const transfer = stats.find((s) => s.type === 'transfer');
+  const income = stats.find((s: { type: string }) => s.type === 'income');
+  const expense = stats.find((s: { type: string }) => s.type === 'expense');
+  const transfer = stats.find((s: { type: string }) => s.type === 'transfer');
 
   return c.json({
     income: {

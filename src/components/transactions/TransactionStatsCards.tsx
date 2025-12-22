@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Grid,
   Card,
   CardContent,
   Typography,
@@ -69,101 +68,99 @@ export const TransactionStatsCards: React.FC<TransactionStatsProps> = ({ startDa
   };
 
   return (
-    <Grid container spacing={2}>
-      <Grid item xs={6} sm={3}>
-        <Card>
-          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-            <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Доходы
-                </Typography>
-                <Typography variant="h6" color="success.main" fontWeight="bold">
-                  {formatAmount(stats.income.total)}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {stats.income.count} тр.
-                </Typography>
-              </Box>
-              <TrendingUp sx={{ fontSize: 32, color: 'success.light', opacity: 0.7 }} />
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+        gap: 2,
+      }}
+    >
+      <Card>
+        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Доходы
+              </Typography>
+              <Typography variant="h6" color="success.main" fontWeight="bold">
+                {formatAmount(stats.income.total)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {stats.income.count} тр.
+              </Typography>
             </Box>
-          </CardContent>
-        </Card>
-      </Grid>
+            <TrendingUp sx={{ fontSize: 32, color: 'success.light', opacity: 0.7 }} />
+          </Box>
+        </CardContent>
+      </Card>
 
-      <Grid item xs={6} sm={3}>
-        <Card>
-          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-            <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Расходы
-                </Typography>
-                <Typography variant="h6" color="error.main" fontWeight="bold">
-                  {formatAmount(stats.expense.total)}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {stats.expense.count} тр.
-                </Typography>
-              </Box>
-              <TrendingDown sx={{ fontSize: 32, color: 'error.light', opacity: 0.7 }} />
+      <Card>
+        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Расходы
+              </Typography>
+              <Typography variant="h6" color="error.main" fontWeight="bold">
+                {formatAmount(stats.expense.total)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {stats.expense.count} тр.
+              </Typography>
             </Box>
-          </CardContent>
-        </Card>
-      </Grid>
+            <TrendingDown sx={{ fontSize: 32, color: 'error.light', opacity: 0.7 }} />
+          </Box>
+        </CardContent>
+      </Card>
 
-      <Grid item xs={6} sm={3}>
-        <Card>
-          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-            <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Переводы
-                </Typography>
-                <Typography variant="h6" color="info.main" fontWeight="bold">
-                  {formatAmount(stats.transfer.total)}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {stats.transfer.count} тр.
-                </Typography>
-              </Box>
-              <SwapHoriz sx={{ fontSize: 32, color: 'info.light', opacity: 0.7 }} />
+      <Card>
+        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Переводы
+              </Typography>
+              <Typography variant="h6" color="info.main" fontWeight="bold">
+                {formatAmount(stats.transfer.total)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {stats.transfer.count} тр.
+              </Typography>
             </Box>
-          </CardContent>
-        </Card>
-      </Grid>
+            <SwapHoriz sx={{ fontSize: 32, color: 'info.light', opacity: 0.7 }} />
+          </Box>
+        </CardContent>
+      </Card>
 
-      <Grid item xs={6} sm={3}>
-        <Card>
-          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-            <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Баланс
-                </Typography>
-                <Typography 
-                  variant="h6" 
-                  color={stats.balance >= 0 ? 'success.main' : 'error.main'}
-                  fontWeight="bold"
-                >
-                  {stats.balance >= 0 ? '+' : ''}
-                  {formatAmount(stats.balance)}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  доход - расход
-                </Typography>
-              </Box>
-              <AccountBalance 
-                sx={{ 
-                  fontSize: 32, 
-                  color: stats.balance >= 0 ? 'success.light' : 'error.light',
-                  opacity: 0.7 
-                }} 
-              />
+      <Card>
+        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Баланс
+              </Typography>
+              <Typography 
+                variant="h6" 
+                color={stats.balance >= 0 ? 'success.main' : 'error.main'}
+                fontWeight="bold"
+              >
+                {stats.balance >= 0 ? '+' : ''}
+                {formatAmount(stats.balance)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                доход - расход
+              </Typography>
             </Box>
-          </CardContent>
-        </Card>
-      </Grid>
-    </Grid>
+            <AccountBalance 
+              sx={{ 
+                fontSize: 32, 
+                color: stats.balance >= 0 ? 'success.light' : 'error.light',
+                opacity: 0.7 
+              }} 
+            />
+          </Box>
+        </CardContent>
+      </Card>
+    </Box>
   );
 };

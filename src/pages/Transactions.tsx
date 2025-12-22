@@ -34,7 +34,7 @@ export const Transactions: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Filters
-  const [filterType, setFilterType] = useState<string>('');
+  const [filterType, setFilterType] = useState<'income' | 'expense' | 'transfer' | ''>('');
   const [filterAccountId, setFilterAccountId] = useState<string>('');
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
@@ -72,7 +72,7 @@ export const Transactions: React.FC = () => {
   };
 
   const filters: TransactionFilters = {
-    type: filterType || undefined,
+    type: (filterType as 'income' | 'expense' | 'transfer') || undefined,
     accountId: filterAccountId || undefined,
     startDate: filterStartDate || undefined,
     endDate: filterEndDate || undefined,
@@ -208,7 +208,7 @@ export const Transactions: React.FC = () => {
             label="Тип транзакции"
             fullWidth
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
+            onChange={(e) => setFilterType(e.target.value as typeof filterType)}
             margin="normal"
           >
             <MenuItem value="">Все</MenuItem>
