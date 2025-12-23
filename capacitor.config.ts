@@ -5,12 +5,12 @@ const config: CapacitorConfig = {
   appName: 'My Finance',
   webDir: 'dist/client',
   server: {
-    // url: 'https://my-finance.moldahasank.workers.dev' , // prod
-    url: 'https://my-finance-dev.moldahasank.workers.dev', // dev
+    // // url: 'https://my-finance.moldahasank.workers.dev' , // prod
+    // url: 'https://my-finance-dev.moldahasank.workers.dev', // dev
     cleartext: false,
   },
   android: {
-    allowMixedContent: true,
+    allowMixedContent: false,
   }
 };
 

@@ -21,7 +21,13 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 // Middleware
 app.use('*', logger());
 app.use('*', cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://localhost',
+    'https://localhost:5173',
+    'https://localhost:3000',
+  ],
   credentials: true,
 }));
 
