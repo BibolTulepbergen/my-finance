@@ -1,69 +1,103 @@
-# React + TypeScript + Vite
+# My Finance
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Финансовое приложение на React с использованием Material UI и Capacitor для мобильных платформ.
 
-Currently, two official plugins are available:
+## Технологии
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19** - UI библиотека
+- **TypeScript** - типизация
+- **Vite** - сборщик и dev сервер
+- **Material UI v7** - UI компоненты (Material Design)
+- **Emotion** - CSS-in-JS для стилизации
+- **Capacitor 8** - для создания нативных мобильных приложений
+- **Cloudflare Workers** - для деплоя веб-версии
 
-## Expanding the ESLint configuration
+## Установка
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Запуск проекта
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Веб-версия
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev          # Запуск dev сервера
+npm run build        # Сборка для продакшена
+npm run preview      # Превью продакшен сборки
+npm run deploy       # Деплой на Cloudflare Workers
+```
+
+### Android
+
+```bash
+npm run android:build  # Сборка и синхронизация с Android
+npm run android:open   # Открыть проект в Android Studio
+npm run android:run    # Сборка и запуск на устройстве/эмуляторе
+```
+
+## Material UI v7
+
+В проекте используется Material UI v7.3.6 для создания современного интерфейса.
+
+### Основные компоненты
+
+```typescript
+import { Button, TextField, Box, Typography } from '@mui/material';
+import { Add as AddIcon } from '@mui/icons-material';
+
+function Example() {
+  return (
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h4" gutterBottom>
+        Заголовок
+      </Typography>
+      <TextField 
+        label="Введите текст" 
+        variant="outlined" 
+        fullWidth 
+        sx={{ mb: 2 }}
+      />
+      <Button 
+        variant="contained" 
+        startIcon={<AddIcon />}
+      >
+        Добавить
+      </Button>
+    </Box>
+  );
+}
+```
+
+### Полезные ссылки
+
+- [Material UI документация](https://mui.com/material-ui/getting-started/)
+- [Все компоненты](https://mui.com/material-ui/all-components/)
+- [Иконки](https://mui.com/material-ui/material-icons/)
+- [Система стилей (sx prop)](https://mui.com/system/getting-started/the-sx-prop/)
+
+## Разработка
+
+### Структура проекта
+
+```
+my-finance/
+├── src/              # Исходный код приложения
+├── public/           # Статические файлы
+├── android/          # Android проект (Capacitor)
+├── worker/           # Cloudflare Workers
+└── dist/             # Сборка (генерируется)
+```
+
+### Линтинг
+
+```bash
+npm run lint         # Проверка кода с ESLint
+```
+
+### Типизация
+
+```bash
+npm run cf-typegen   # Генерация типов для Cloudflare Workers
 ```

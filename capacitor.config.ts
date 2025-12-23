@@ -5,7 +5,8 @@ const config: CapacitorConfig = {
   appName: 'My Finance',
   webDir: 'dist/client',
   server: {
-    url: 'http://192.168.1.100:5173',
+    // url: 'my-finance.moldahasank.workers.dev' , // prod
+    url: 'my-finance-dev.moldahasank.workers.dev', // dev
     cleartext: false,
   },
   android: {
