@@ -141,12 +141,25 @@ export function AccountList({ onEdit, onAdd }: AccountListProps) {
     <Box>
       {/* Summary Card */}
       {summary && (
-        <Card sx={{ mb: 3, bgcolor: 'primary.main', color: 'white' }}>
+        <Card
+          sx={{
+            mb: 3,
+            color: 'common.white',
+            background: 'linear-gradient(135deg, #1e88e5, #42a5f5)',
+            borderRadius: 3,
+            boxShadow: 6,
+          }}
+        >
           <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Общий баланс
-            </Typography>
-            <Typography variant="h3">
+            <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+              <Typography variant="h6">Общий баланс</Typography>
+              <Chip
+                label={`База: ${summary.baseCurrency}`}
+                size="small"
+                sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'common.white' }}
+              />
+            </Box>
+            <Typography variant="h3" fontWeight="bold" sx={{ lineHeight: 1.1 }}>
               {formatBalance(summary.totalBalance, summary.baseCurrency)} {summary.baseCurrency}
             </Typography>
           </CardContent>

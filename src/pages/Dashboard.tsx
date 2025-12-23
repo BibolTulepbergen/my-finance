@@ -15,6 +15,9 @@ import {
   useMediaQuery,
   useTheme,
   Fab,
+  Paper,
+  BottomNavigation,
+  BottomNavigationAction,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -24,6 +27,7 @@ import {
   Add as AddIcon,
   ShowChart,
 } from '@mui/icons-material';
+import { Capacitor } from '@capacitor/core';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AccountList } from '../components/accounts/AccountList';
 import { AccountForm } from '../components/accounts/AccountForm';
@@ -44,9 +48,18 @@ const menuItems = [
   { path: '/settings', label: 'Настройки', icon: <Settings /> },
 ];
 
+const BOTTOM_NAV_ITEMS = [
+  { value: 'accounts', label: 'Счета', icon: <AccountBalanceWallet />, path: '/' },
+  { value: 'transactions', label: 'Транзакции', icon: <Receipt />, path: '/transactions' },
+  { value: 'currency', label: 'Курсы', icon: <ShowChart />, path: '/currency-rates' },
+  { value: 'settings', label: 'Настройки', icon: <Settings />, path: '/settings' },
+] as const;
+type BottomNavValue = (typeof BOTTOM_NAV_ITEMS)[number]['value'];
+
 export function Dashboard() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isNativeApp = Capacitor.getPlatform() !== 'web';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountFormOpen, setAccountFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<any>(null);
@@ -96,6 +109,19 @@ export function Dashboard() {
   };
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const [bottomNavValue, setBottomNavValue] = useState<BottomNavValue>(BOTTOM_NAV_ITEMS[0].value);
+
+  useEffect(() => {
+    const current = BOTTOM_NAV_ITEMS.find((item) => {
+      if (item.path === '/') {
+        return location.pathname === '/';
+      }
+      return location.pathname.startsWith(item.path);
+    });
+    if (current && current.value !== bottomNavValue) {
+      setBottomNavValue(current.value);
+    }
+  }, [location.pathname, bottomNavValue]);
 
   const handleAccountFormSuccess = () => {
     setRefreshKey(prev => prev + 1);
@@ -137,6 +163,7 @@ export function Dashboard() {
         sx={{
           width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
           ml: { sm: `${DRAWER_WIDTH}px` },
+          paddingTop: isNativeApp ? 'env(safe-area-inset-top)' : 0,
         }}
       >
         <Toolbar>
@@ -189,6 +216,8 @@ export function Dashboard() {
         sx={{
           flexGrow: 1,
           p: 3,
+          pt: isNativeApp ? 'calc(24px + env(safe-area-inset-top))' : 3, // дополнительное место под AppBar с safe area
+          pb: isNativeApp ? 'calc(80px + env(safe-area-inset-bottom))' : 3, // дополнительное место под bottom navigation с safe area
           width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
         }}
       >
@@ -233,12 +262,46 @@ export function Dashboard() {
         onClick={() => setTransactionModalOpen(true)}
         sx={{
           position: 'fixed',
-          bottom: 16,
+          bottom: isNativeApp ? 'calc(80px + env(safe-area-inset-bottom))' : 16, // поднять FAB над bottom navigation в приложении + safe area
           right: 16,
         }}
       >
         <AddIcon />
       </Fab>
+
+      {isNativeApp && (
+        <Paper
+          elevation={3}
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            paddingBottom: 'env(safe-area-inset-bottom)',
+          }}
+        >
+          <BottomNavigation
+            showLabels
+            value={bottomNavValue}
+            onChange={(_, newValue) => {
+              const target = BOTTOM_NAV_ITEMS.find((item) => item.value === newValue);
+              if (target) {
+                setBottomNavValue(newValue);
+                handleNavigate(target.path);
+              }
+            }}
+          >
+            {BOTTOM_NAV_ITEMS.map((item) => (
+              <BottomNavigationAction
+                key={item.value}
+                label={item.label}
+                value={item.value}
+                icon={item.icon}
+              />
+            ))}
+          </BottomNavigation>
+        </Paper>
+      )}
     </Box>
   );
 }

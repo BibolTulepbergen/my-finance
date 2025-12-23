@@ -95,11 +95,18 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          bgcolor: 'background.default',
+        }}
+      >
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </Box>
     </ThemeProvider>
   );
 }
