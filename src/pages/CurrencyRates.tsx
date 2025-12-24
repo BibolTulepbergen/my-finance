@@ -120,11 +120,18 @@ export function CurrencyRates() {
               `/api/currency/rate?from=${pair.from}&to=${pair.to}`
             );
             if (response.ok) {
-              const data = await response.json();
-              ratesData[`${pair.from}-${pair.to}`] = data;
+              const contentType = response.headers.get('content-type');
+              if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                ratesData[`${pair.from}-${pair.to}`] = data;
+              } else {
+                console.error(`Failed to load rate for ${pair.from}-${pair.to}: Expected JSON, got ${contentType}`);
+              }
+            } else {
+              console.error(`Failed to load rate for ${pair.from}-${pair.to}: HTTP ${response.status}`);
             }
           } catch (err) {
-            console.error(`Failed to load rate for ${pair.from}-${pair.to}`, err);
+            console.error(`Failed to load rate for ${pair.from}-${pair.to}:`, err);
           }
         })
       );
@@ -154,7 +161,14 @@ export function CurrencyRates() {
       );
       
       if (!response.ok) {
-        console.error('Failed to load historical data from API');
+        console.error(`Failed to load historical data from API: HTTP ${response.status}`);
+        setHistoricalData([]);
+        return;
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error(`Failed to load historical data: Expected JSON, got ${contentType}`);
         setHistoricalData([]);
         return;
       }

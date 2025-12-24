@@ -18,6 +18,32 @@
 npm install
 ```
 
+## Настройка API
+
+Для работы приложения необходимо настроить URL вашего Cloudflare Worker API.
+
+### Для Android приложения
+
+1. Откройте `capacitor.config.ts`
+2. Раскомментируйте и установите URL вашего API:
+
+```typescript
+server: {
+ 
+  cleartext: false,
+}
+```
+
+### Для веб-версии (опционально)
+
+Создайте файл `.env` в корне проекта (если нужно переопределить API URL):
+
+```bash
+VITE_API_URL=https://my-finance-dev.moldahasank.workers.dev/api
+```
+
+По умолчанию используется относительный путь `/api`, что подходит для локальной разработки с Cloudflare Workers.
+
 ## Запуск проекта
 
 ### Веб-версия
