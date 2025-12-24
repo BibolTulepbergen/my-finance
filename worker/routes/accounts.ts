@@ -16,17 +16,22 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // Get all accounts for current user
 app.get('/', authMiddleware, async (c) => {
-  const userId = getUserId(c);
-  const db = c.get('db');
+  try {
+    const userId = getUserId(c);
+    const db = c.get('db');
 
-  const userAccounts = await db
-    .select()
-    .from(accounts)
-    .where(eq(accounts.userId, userId))
-    .orderBy(accounts.sortOrder, accounts.createdAt)
-    .all();
+    const userAccounts = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.userId, userId))
+      .orderBy(accounts.sortOrder, accounts.createdAt)
+      .all();
 
-  return c.json({ accounts: userAccounts });
+    return c.json({ accounts: userAccounts });
+  } catch (error) {
+    console.error('Error in /accounts:', error);
+    return c.json({ error: 'Failed to fetch accounts' }, 500);
+  }
 });
 
 // Get single account

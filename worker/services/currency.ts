@@ -163,8 +163,52 @@ export class CurrencyService {
     }
   }
 
-  // Получить курс крипты через CoinGecko (бесплатный, без ключа)
+  // Получить курс крипты через несколько API (с fallback)
   private async fetchCryptoToFiat(crypto: 'BTC', fiat: string): Promise<number> {
+    // Пробуем несколько API по очереди
+    const apis = [
+      () => this.fetchCryptoFromBlockchain(crypto, fiat),
+      () => this.fetchCryptoFromCoinGecko(crypto, fiat),
+      () => this.fetchCryptoFromCoinDesk(crypto, fiat),
+    ];
+
+    for (const apiFn of apis) {
+      try {
+        const rate = await apiFn();
+        if (rate && rate > 0) {
+          return rate;
+        }
+      } catch (error) {
+        console.error(`Crypto API failed, trying next:`, error);
+        continue;
+      }
+    }
+
+    throw new Error(`All crypto APIs failed for ${crypto}-${fiat}`);
+  }
+
+  // Blockchain.com API (надежный, без rate limits)
+  private async fetchCryptoFromBlockchain(_crypto: 'BTC', fiat: string): Promise<number> {
+    try {
+      const response = await fetch('https://blockchain.info/ticker');
+      if (!response.ok) throw new Error(`Blockchain API error: ${response.status}`);
+      
+      const data: any = await response.json();
+      const fiatUpper = fiat.toUpperCase();
+      
+      if (data[fiatUpper]?.last) {
+        return data[fiatUpper].last;
+      }
+      
+      throw new Error(`Currency ${fiatUpper} not found in Blockchain API`);
+    } catch (error) {
+      console.error(`Blockchain API error:`, error);
+      throw error;
+    }
+  }
+
+  // CoinGecko API (бесплатный, но с rate limits)
+  private async fetchCryptoFromCoinGecko(_crypto: 'BTC', fiat: string): Promise<number> {
     try {
       const cryptoId = 'bitcoin';
       const fiatLower = fiat.toLowerCase();
@@ -179,23 +223,50 @@ export class CurrencyService {
       );
 
       if (!response.ok) {
-        // Если получили 429 (Too Many Requests), выбрасываем специальную ошибку
-        if (response.status === 429) {
-          throw new Error(`Rate limit exceeded for crypto API`);
-        }
-        throw new Error(`Failed to fetch crypto price: ${response.statusText}`);
+        throw new Error(`CoinGecko API error: ${response.status}`);
       }
 
       const data: any = await response.json();
       const rate = data?.[cryptoId]?.[fiatLower];
 
       if (!rate) {
-        throw new Error(`Crypto rate not available for ${crypto}-${fiat}`);
+        throw new Error(`Rate not available from CoinGecko`);
       }
 
       return rate;
     } catch (error) {
-      console.error(`Error fetching crypto rate:`, error);
+      console.error(`CoinGecko API error:`, error);
+      throw error;
+    }
+  }
+
+  // CoinDesk API (надежный, публичный)
+  private async fetchCryptoFromCoinDesk(_crypto: 'BTC', fiat: string): Promise<number> {
+    try {
+      // CoinDesk предоставляет только USD, EUR, GBP
+      const supportedCurrencies = ['USD', 'EUR', 'GBP'];
+      const fiatUpper = fiat.toUpperCase();
+      
+      if (!supportedCurrencies.includes(fiatUpper)) {
+        // Если валюта не поддерживается, получаем курс BTC-USD и конвертируем
+        const btcUsd = await this.fetchCryptoFromCoinDesk('BTC', 'USD');
+        const usdToFiat = await this.fetchFiatRate('USD', fiat);
+        return btcUsd * usdToFiat;
+      }
+
+      const response = await fetch('https://api.coindesk.com/v1/bpi/currentprice.json');
+      if (!response.ok) throw new Error(`CoinDesk API error: ${response.status}`);
+      
+      const data: any = await response.json();
+      const rate = data?.bpi?.[fiatUpper]?.rate_float;
+      
+      if (!rate) {
+        throw new Error(`Rate not available from CoinDesk`);
+      }
+      
+      return rate;
+    } catch (error) {
+      console.error(`CoinDesk API error:`, error);
       throw error;
     }
   }
