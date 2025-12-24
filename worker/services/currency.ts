@@ -79,30 +79,48 @@ export class CurrencyService {
 
   // Получить курс обмена с кешированием (оптимизированная версия)
   async getExchangeRate(from: SupportedCurrency, to: SupportedCurrency): Promise<number> {
-    // Одинаковые валюты
-    if (from === to) return 1;
+    try {
+      // Одинаковые валюты
+      if (from === to) return 1;
 
-    // Проверяем кеш для базовых курсов
-    let fromRate = await this.getBaseRate(from);
-    let toRate = await this.getBaseRate(to);
+      // Проверяем кеш для базовых курсов
+      let fromRate = await this.getBaseRate(from);
+      let toRate = await this.getBaseRate(to);
 
-    // Если нет в кеше, загружаем из API
-    if (fromRate === null) {
-      fromRate = from === 'USD' ? 1 : await this.fetchExchangeRate('USD', from);
-      await this.saveBaseRate(from, fromRate);
+      // Если нет в кеше, загружаем из API
+      if (fromRate === null) {
+        try {
+          fromRate = from === 'USD' ? 1 : await this.fetchExchangeRate('USD', from);
+          await this.saveBaseRate(from, fromRate);
+        } catch (error) {
+          console.error(`Failed to fetch rate for USD-${from}, using fallback:`, error);
+          // Fallback: используем 1:1 курс если API недоступен
+          fromRate = 1;
+        }
+      }
+
+      if (toRate === null) {
+        try {
+          toRate = to === 'USD' ? 1 : await this.fetchExchangeRate('USD', to);
+          await this.saveBaseRate(to, toRate);
+        } catch (error) {
+          console.error(`Failed to fetch rate for USD-${to}, using fallback:`, error);
+          // Fallback: используем 1:1 курс если API недоступен
+          toRate = 1;
+        }
+      }
+
+      // Вычисляем кросс-курс через USD
+      // from -> USD -> to
+      // Например: EUR -> USD -> KZT = (USD/EUR) * (KZT/USD) = KZT/EUR
+      const rate = toRate / fromRate;
+      
+      return rate;
+    } catch (error) {
+      console.error(`Unexpected error in getExchangeRate(${from}, ${to}):`, error);
+      // Last resort fallback: 1:1 курс
+      return 1;
     }
-
-    if (toRate === null) {
-      toRate = to === 'USD' ? 1 : await this.fetchExchangeRate('USD', to);
-      await this.saveBaseRate(to, toRate);
-    }
-
-    // Вычисляем кросс-курс через USD
-    // from -> USD -> to
-    // Например: EUR -> USD -> KZT = (USD/EUR) * (KZT/USD) = KZT/EUR
-    const rate = toRate / fromRate;
-    
-    return rate;
   }
 
   // Получить курс USD -> currency через бесплатные API
