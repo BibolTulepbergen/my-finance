@@ -16,17 +16,22 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // Get all accounts for current user
 app.get('/', authMiddleware, async (c) => {
-  const userId = getUserId(c);
-  const db = c.get('db');
+  try {
+    const userId = getUserId(c);
+    const db = c.get('db');
 
-  const userAccounts = await db
-    .select()
-    .from(accounts)
-    .where(eq(accounts.userId, userId))
-    .orderBy(accounts.sortOrder, accounts.createdAt)
-    .all();
+    const userAccounts = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.userId, userId))
+      .orderBy(accounts.sortOrder, accounts.createdAt)
+      .all();
 
-  return c.json({ accounts: userAccounts });
+    return c.json({ accounts: userAccounts });
+  } catch (error) {
+    console.error('Error in /accounts:', error);
+    return c.json({ error: 'Failed to fetch accounts' }, 500);
+  }
 });
 
 // Get single account
@@ -237,49 +242,64 @@ app.post('/:id/restore', authMiddleware, async (c) => {
 
 // Get account balances in all currencies
 app.get('/balances/summary', authMiddleware, async (c) => {
-  const userId = getUserId(c);
-  const db = c.get('db');
-  const currencyService = c.get('currencyService');
+  try {
+    const userId = getUserId(c);
+    const db = c.get('db');
+    const currencyService = c.get('currencyService');
 
-  // Get user's base currency
-  const user = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .get();
+    // Get user's base currency
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .get();
 
-  const baseCurrency = user?.baseCurrency || 'USD';
+    const baseCurrency = user?.baseCurrency || 'USD';
 
-  // Get all accounts
-  const userAccounts = await db
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.userId, userId), eq(accounts.isActive, true)))
-    .all();
+    // Get all accounts
+    const userAccounts = await db
+      .select()
+      .from(accounts)
+      .where(and(eq(accounts.userId, userId), eq(accounts.isActive, true)))
+      .all();
 
-  // Calculate total in base currency
-  let totalInBaseCurrency = 0;
-  const accountsWithConvertedBalance = await Promise.all(
-    userAccounts.map(async (account: any) => {
-      const convertedBalance = await currencyService.convert(
-        account.balance,
-        account.currency as any,
-        baseCurrency as any
-      );
-      totalInBaseCurrency += convertedBalance;
+    // Calculate total in base currency
+    let totalInBaseCurrency = 0;
+    const accountsWithConvertedBalance = await Promise.all(
+      userAccounts.map(async (account: any) => {
+        try {
+          const convertedBalance = await currencyService.convert(
+            account.balance,
+            account.currency as any,
+            baseCurrency as any
+          );
+          totalInBaseCurrency += convertedBalance;
 
-      return {
-        ...account,
-        balanceInBaseCurrency: convertedBalance,
-      };
-    })
-  );
+          return {
+            ...account,
+            balanceInBaseCurrency: convertedBalance,
+          };
+        } catch (error) {
+          console.error(`Failed to convert balance for account ${account.id}:`, error);
+          // Fallback: use original balance if conversion fails
+          totalInBaseCurrency += account.balance;
+          return {
+            ...account,
+            balanceInBaseCurrency: account.balance,
+          };
+        }
+      })
+    );
 
-  return c.json({
-    baseCurrency,
-    totalBalance: totalInBaseCurrency,
-    accounts: accountsWithConvertedBalance,
-  });
+    return c.json({
+      baseCurrency,
+      totalBalance: totalInBaseCurrency,
+      accounts: accountsWithConvertedBalance,
+    });
+  } catch (error) {
+    console.error('Error in /balances/summary:', error);
+    return c.json({ error: 'Failed to fetch account balances' }, 500);
+  }
 });
 
 // Recalculate account balance based on transactions

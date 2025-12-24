@@ -21,7 +21,13 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 // Middleware
 app.use('*', logger());
 app.use('*', cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://localhost',
+    'https://localhost:5173',
+    'https://localhost:3000',
+  ],
   credentials: true,
 }));
 
@@ -46,6 +52,20 @@ app.route('/api/users', usersRouter);
 app.route('/api/accounts', accountsRouter);
 app.route('/api/currency', currencyRouter);
 app.route('/api/transactions', transactionsRouter);
+
+// Global error handler - always return JSON, never HTML
+app.onError((err, c) => {
+  console.error('Unhandled error:', err);
+  return c.json({ 
+    error: 'Internal server error',
+    message: err.message || 'An unexpected error occurred'
+  }, 500);
+});
+
+// 404 handler
+app.notFound((c) => {
+  return c.json({ error: 'Not found' }, 404);
+});
 
 // Scheduled task to refresh exchange rates
 export default {

@@ -44,6 +44,9 @@
 		"dev": {
 			"name": "my-finance-dev",
 			"compatibility_flags": ["nodejs_compat"],
+			"triggers": {
+				"crons": ["0 * * * *"] // every hour
+			},
 			"d1_databases": [
 				{
 					"binding": "DataBase",

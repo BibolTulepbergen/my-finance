@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, unique } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 // Users table
@@ -81,19 +81,18 @@ export const budgets = sqliteTable('budgets', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
-// Exchange rates table - оптимизированная таблица курсов валют
-// Хранит только базовые курсы относительно USD (USD-EUR, USD-KZT, USD-BTC)
+// Exchange rates table - таблица курсов валют с историей
+// Хранит базовые курсы относительно USD (USD-EUR, USD-KZT, USD-BTC)
 // Кросс-курсы вычисляются автоматически в CurrencyService
+// Каждое обновление создает новую запись для построения графиков
 export const exchangeRates = sqliteTable('exchange_rates', {
-  id: text('id').primaryKey(), // Формат: "USD-EUR", "USD-KZT", "USD-BTC"
+  id: text('id').primaryKey(), // Уникальный ID: "USD-EUR-timestamp"
   fromCurrency: text('from_currency').notNull(), // Всегда USD для базовых курсов
   toCurrency: text('to_currency').notNull(), // EUR, KZT, BTC
   rate: real('rate').notNull(),
   source: text('source').notNull().default('yahoo-finance'), // Источник данных
-  lastUpdated: integer('last_updated', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-}, (table) => ({
-  uniquePair: unique().on(table.fromCurrency, table.toCurrency),
-}));
+  timestamp: integer('timestamp', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`), // Время записи курса
+});
 
 // Types
 export type User = typeof users.$inferSelect;

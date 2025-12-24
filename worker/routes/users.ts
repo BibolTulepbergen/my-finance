@@ -15,20 +15,25 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // Get current user profile
 app.get('/me', authMiddleware, async (c) => {
-  const userId = getUserId(c);
-  const db = c.get('db');
+  try {
+    const userId = getUserId(c);
+    const db = c.get('db');
 
-  const user = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .get();
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .get();
 
-  if (!user) {
-    return c.json({ error: 'User not found' }, 404);
+    if (!user) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    return c.json({ user });
+  } catch (error) {
+    console.error('Error in /users/me:', error);
+    return c.json({ error: 'Failed to fetch user profile' }, 500);
   }
-
-  return c.json({ user });
 });
 
 // Create or update user profile
@@ -45,40 +50,45 @@ app.post(
     })
   ),
   async (c) => {
-    const userId = getUserId(c);
-    const db = c.get('db');
-    const data = c.req.valid('json');
+    try {
+      const userId = getUserId(c);
+      const db = c.get('db');
+      const data = c.req.valid('json');
 
-    // Check if user exists
-    const existingUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .get();
-
-    if (existingUser) {
-      // Update existing user
-      const [updatedUser] = await db
-        .update(users)
-        .set({
-          ...data,
-          updatedAt: new Date(),
-        })
+      // Check if user exists
+      const existingUser = await db
+        .select()
+        .from(users)
         .where(eq(users.id, userId))
-        .returning();
+        .get();
 
-      return c.json({ user: updatedUser });
-    } else {
-      // Create new user
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          id: userId,
-          ...data,
-        })
-        .returning();
+      if (existingUser) {
+        // Update existing user
+        const [updatedUser] = await db
+          .update(users)
+          .set({
+            ...data,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, userId))
+          .returning();
 
-      return c.json({ user: newUser }, 201);
+        return c.json({ user: updatedUser });
+      } else {
+        // Create new user
+        const [newUser] = await db
+          .insert(users)
+          .values({
+            id: userId,
+            ...data,
+          })
+          .returning();
+
+        return c.json({ user: newUser }, 201);
+      }
+    } catch (error) {
+      console.error('Error in /users/sync:', error);
+      return c.json({ error: 'Failed to sync user profile' }, 500);
     }
   }
 );

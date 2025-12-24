@@ -101,4 +101,54 @@ app.post(
   }
 );
 
+// Get historical rates for chart (public endpoint)
+app.get(
+  '/history',
+  zValidator(
+    'query',
+    z.object({
+      from: z.enum(['KZT', 'USD', 'EUR', 'BTC']),
+      to: z.enum(['KZT', 'USD', 'EUR', 'BTC']),
+      period: z.enum(['24h', '7d', '30d']).default('7d'),
+    })
+  ),
+  async (c) => {
+    const { from, to, period } = c.req.valid('query');
+    const currencyService = c.get('currencyService');
+
+    try {
+      // Вычисляем начальную метку времени
+      const now = Date.now();
+      let startTimestamp: number;
+      
+      switch (period) {
+        case '24h':
+          startTimestamp = Math.floor((now - 24 * 60 * 60 * 1000) / 1000);
+          break;
+        case '7d':
+          startTimestamp = Math.floor((now - 7 * 24 * 60 * 60 * 1000) / 1000);
+          break;
+        case '30d':
+          startTimestamp = Math.floor((now - 30 * 24 * 60 * 60 * 1000) / 1000);
+          break;
+      }
+
+      const history = await currencyService.getHistoricalRates(from, to, startTimestamp);
+      
+      return c.json({
+        from,
+        to,
+        period,
+        data: history.map((h: any) => ({
+          rate: h.rate,
+          timestamp: h.timestamp.toISOString(),
+        })),
+      });
+    } catch (error) {
+      console.error('Error fetching historical rates:', error);
+      return c.json({ error: 'Failed to fetch historical rates' }, 500);
+    }
+  }
+);
+
 export default app;
