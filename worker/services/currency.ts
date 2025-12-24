@@ -30,49 +30,49 @@ export class CurrencyService {
     this.db = db;
   }
 
-  // Получить базовый курс относительно USD из кеша
+  // Получить последний базовый курс относительно USD из БД
   private async getBaseRate(currency: SupportedCurrency): Promise<number | null> {
     if (currency === 'USD') return 1;
     
-    const pairId = `USD-${currency}`;
+    // Получаем последнюю запись для данной пары (сортируем по timestamp DESC)
+    // Кеш действителен 1 час
+    const oneHourAgo = Math.floor(Date.now() / 1000) - 3600;
     
-    // Проверка кеша (действителен 1 час)
     const cached = await this.db
       .select()
       .from(exchangeRates)
       .where(
         and(
-          eq(exchangeRates.id, pairId),
-          sql`${exchangeRates.lastUpdated} > unixepoch() - 3600`
+          eq(exchangeRates.fromCurrency, 'USD'),
+          eq(exchangeRates.toCurrency, currency),
+          sql`${exchangeRates.timestamp} > ${oneHourAgo}`
         )
       )
+      .orderBy(sql`${exchangeRates.timestamp} DESC`)
+      .limit(1)
       .get();
 
     return cached ? cached.rate : null;
   }
 
-  // Сохранить базовый курс в кеш
+  // Сохранить базовый курс как новую запись (для истории)
   private async saveBaseRate(currency: SupportedCurrency, rate: number): Promise<void> {
     if (currency === 'USD') return;
     
-    const pairId = `USD-${currency}`;
+    const timestamp = new Date();
+    const timestampUnix = Math.floor(timestamp.getTime() / 1000);
+    const recordId = `USD-${currency}-${timestampUnix}`;
     
+    // Всегда создаем новую запись для сохранения истории
     await this.db
       .insert(exchangeRates)
       .values({
-        id: pairId,
+        id: recordId,
         fromCurrency: 'USD',
         toCurrency: currency,
         rate,
         source: 'exchangerate-api',
-        lastUpdated: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: exchangeRates.id,
-        set: {
-          rate,
-          lastUpdated: new Date(),
-        },
+        timestamp,
       })
       .run();
   }
@@ -152,10 +152,19 @@ export class CurrencyService {
       const fiatLower = fiat.toLowerCase();
       
       const response = await fetch(
-        `${COINGECKO_API}?ids=${cryptoId}&vs_currencies=${fiatLower}`
+        `${COINGECKO_API}?ids=${cryptoId}&vs_currencies=${fiatLower}`,
+        {
+          headers: {
+            'Accept': 'application/json',
+          },
+        }
       );
 
       if (!response.ok) {
+        // Если получили 429 (Too Many Requests), выбрасываем специальную ошибку
+        if (response.status === 429) {
+          throw new Error(`Rate limit exceeded for crypto API`);
+        }
         throw new Error(`Failed to fetch crypto price: ${response.statusText}`);
       }
 
@@ -204,27 +213,120 @@ export class CurrencyService {
         console.log(`✓ Refreshed base rate: USD-${currency} = ${rate}`);
       } catch (error) {
         console.error(`✗ Failed to refresh USD-${currency}:`, error);
+        
+        // Для криптовалют при rate limit - продолжаем работу с кешем
+        if (currency === 'BTC' && error instanceof Error && error.message.includes('Rate limit')) {
+          console.log(`ℹ Using cached rate for USD-${currency}`);
+        }
+      }
+      
+      // Добавляем небольшую задержку между запросами, чтобы избежать rate limiting
+      if (currency === 'BTC') {
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     
     console.log('✓ All base rates refreshed. Cross rates will be calculated on demand.');
   }
 
-  // Очистить старые неиспользуемые записи (оставляем только базовые курсы USD-*)
+  // Очистить очень старые записи (оставляем историю за последние 30 дней)
   async cleanupOldRates(): Promise<void> {
     try {
-      // Удаляем все записи, которые НЕ являются базовыми курсами (fromCurrency != 'USD')
-      // или слишком старые (> 24 часов)
+      // Удаляем записи старше 30 дней
+      const thirtyDaysAgo = Math.floor(Date.now() / 1000) - (30 * 86400);
+      
       await this.db
         .delete(exchangeRates)
         .where(
-          sql`${exchangeRates.fromCurrency} != 'USD' OR ${exchangeRates.lastUpdated} < unixepoch() - 86400`
+          sql`${exchangeRates.timestamp} < ${thirtyDaysAgo}`
         )
         .run();
       
-      console.log('✓ Cleaned up old exchange rate records');
+      console.log('✓ Cleaned up old exchange rate records (older than 30 days)');
     } catch (error) {
       console.error('✗ Failed to cleanup old rates:', error);
+    }
+  }
+
+  // Получить историю курса для построения графика
+  async getHistoricalRates(
+    from: SupportedCurrency,
+    to: SupportedCurrency,
+    startTimestamp: number
+  ): Promise<Array<{ rate: number; timestamp: Date }>> {
+    try {
+      // Если валюты одинаковые
+      if (from === to) {
+        return [{ rate: 1, timestamp: new Date() }];
+      }
+
+      // Получаем базовые курсы для обеих валют
+      const fromRates = from === 'USD' 
+        ? [{ rate: 1, timestamp: new Date() }]
+        : await this.db
+            .select({
+              rate: exchangeRates.rate,
+              timestamp: exchangeRates.timestamp,
+            })
+            .from(exchangeRates)
+            .where(
+              and(
+                eq(exchangeRates.fromCurrency, 'USD'),
+                eq(exchangeRates.toCurrency, from),
+                sql`${exchangeRates.timestamp} >= ${startTimestamp}`
+              )
+            )
+            .orderBy(sql`${exchangeRates.timestamp} ASC`)
+            .all();
+
+      const toRates = to === 'USD'
+        ? [{ rate: 1, timestamp: new Date() }]
+        : await this.db
+            .select({
+              rate: exchangeRates.rate,
+              timestamp: exchangeRates.timestamp,
+            })
+            .from(exchangeRates)
+            .where(
+              and(
+                eq(exchangeRates.fromCurrency, 'USD'),
+                eq(exchangeRates.toCurrency, to),
+                sql`${exchangeRates.timestamp} >= ${startTimestamp}`
+              )
+            )
+            .orderBy(sql`${exchangeRates.timestamp} ASC`)
+            .all();
+
+      // Если одна из валют USD, возвращаем прямые курсы
+      if (from === 'USD') {
+        return toRates;
+      }
+      if (to === 'USD') {
+        return fromRates.map(r => ({
+          rate: 1 / r.rate,
+          timestamp: r.timestamp,
+        }));
+      }
+
+      // Для кросс-курсов нужно синхронизировать по времени
+      // Упрощенный подход: берем пересечение timestamps
+      const result: Array<{ rate: number; timestamp: Date }> = [];
+      const toRatesMap = new Map(toRates.map(r => [r.timestamp.getTime(), r.rate]));
+
+      for (const fromRate of fromRates) {
+        const toRate = toRatesMap.get(fromRate.timestamp.getTime());
+        if (toRate) {
+          result.push({
+            rate: toRate / fromRate.rate,
+            timestamp: fromRate.timestamp,
+          });
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error fetching historical rates:', error);
+      return [];
     }
   }
 }

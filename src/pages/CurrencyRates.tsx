@@ -148,82 +148,60 @@ export function CurrencyRates() {
 
   const loadHistoricalData = async () => {
     try {
-      // Получаем реальный текущий курс
-      const pairKey = `${baseCurrency}-${targetCurrency}`;
-      let currentRate = rates[pairKey]?.rate;
+      // Загружаем реальные исторические данные из API
+      const response = await fetch(
+        `/api/currency/history?from=${baseCurrency}&to=${targetCurrency}&period=${timeRange}`
+      );
       
-      // Если курс еще не загружен, загружаем его
-      if (!currentRate) {
-        try {
-          const response = await fetch(
-            `/api/currency/rate?from=${baseCurrency}&to=${targetCurrency}`
-          );
-          if (response.ok) {
-            const rateData = await response.json();
-            currentRate = rateData.rate;
-            // Обновляем rates
-            setRates(prev => ({ ...prev, [pairKey]: rateData }));
-          }
-        } catch (err) {
-          console.error('Failed to load rate for chart:', err);
-        }
-      }
-      
-      // Если все еще нет курса, не показываем график
-      if (!currentRate) {
+      if (!response.ok) {
+        console.error('Failed to load historical data from API');
         setHistoricalData([]);
         return;
       }
 
-      // Генерируем исторические данные на основе реального курса
-      const points = timeRange === '24h' ? 24 : timeRange === '7d' ? 7 : 30;
-      const now = new Date();
-      const data = [];
-
-      // Создаем более реалистичную историю с постепенными изменениями
-      let previousRate = currentRate;
+      const historyData = await response.json();
       
-      for (let i = points - 1; i >= 0; i--) {
-        const date = new Date(now);
-        if (timeRange === '24h') {
-          date.setHours(date.getHours() - i);
-        } else {
-          date.setDate(date.getDate() - i);
-        }
+      // Если нет данных, показываем пустой график
+      if (!historyData.data || historyData.data.length === 0) {
+        setHistoricalData([]);
+        return;
+      }
 
-        // Более реалистичные колебания: небольшие изменения с трендом к текущему курсу
-        // Чем ближе к текущему моменту, тем ближе к реальному курсу
-        const progress = (points - i) / points; // от 0 до 1
-        const targetRate = currentRate;
-        
-        // Начинаем с небольшого отклонения и постепенно приближаемся к текущему курсу
-        const baseDeviation = currentRate * 0.02; // ±2% максимум
-        const randomFactor = (Math.random() - 0.5) * 2; // от -1 до 1
-        const deviation = baseDeviation * randomFactor * (1 - progress * 0.7); // уменьшаем отклонение ближе к концу
-        
-        // Плавное движение к текущему курсу
-        const rate = previousRate + (targetRate - previousRate) * 0.1 + deviation;
-        previousRate = rate;
-        
-        data.push({
+      // Форматируем данные для графика
+      const formattedData = historyData.data.map((item: any) => {
+        const date = new Date(item.timestamp);
+        return {
           time: date.toLocaleString('ru-RU', {
             month: 'short',
             day: 'numeric',
             hour: timeRange === '24h' ? 'numeric' : undefined,
           }),
-          rate: Math.max(0.000001, rate), // убеждаемся что курс положительный
+          rate: item.rate,
           timestamp: date.getTime(),
-        });
-      }
+        };
+      });
 
-      // Последняя точка должна быть точно текущий курс
-      if (data.length > 0) {
-        data[data.length - 1].rate = currentRate;
+      setHistoricalData(formattedData);
+      
+      // Обновляем текущий курс, если есть последняя точка
+      if (formattedData.length > 0) {
+        const pairKey = `${baseCurrency}-${targetCurrency}`;
+        const latestRate = formattedData[formattedData.length - 1].rate;
+        
+        setRates(prev => ({
+          ...prev,
+          [pairKey]: {
+            id: pairKey,
+            fromCurrency: baseCurrency,
+            toCurrency: targetCurrency,
+            rate: latestRate,
+            lastUpdated: new Date().toISOString(),
+          }
+        }));
       }
-
-      setHistoricalData(data);
     } catch (err) {
       console.error('Failed to load historical data:', err);
+      setHistoricalData([]);
     }
   };
 
