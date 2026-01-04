@@ -11,8 +11,12 @@ import {
   Button,
   Alert,
   CircularProgress,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { userApi } from '../../lib/api';
 
 const CURRENCIES = [
@@ -24,6 +28,7 @@ const CURRENCIES = [
 
 export function UserSettings() {
   const { user, signOut, sendVerificationEmail } = useAuth();
+  const { mode, toggleTheme } = useTheme();
   const [baseCurrency, setBaseCurrency] = useState('USD');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -122,6 +127,38 @@ export function UserSettings() {
               )}
             </Box>
           </Box>
+        </CardContent>
+      </Card>
+
+      {/* Appearance Settings */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Внешний вид
+          </Typography>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {mode === 'dark' ? <Brightness4 /> : <Brightness7 />}
+              <Typography variant="body1">
+                {mode === 'dark' ? 'Темная тема' : 'Светлая тема'}
+              </Typography>
+            </Box>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={mode === 'dark'}
+                  onChange={toggleTheme}
+                  color="primary"
+                />
+              }
+              label=""
+            />
+          </Box>
+
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+            Переключение между светлой и темной темой интерфейса
+          </Typography>
         </CardContent>
       </Card>
 

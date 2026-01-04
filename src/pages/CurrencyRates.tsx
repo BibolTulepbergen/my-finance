@@ -274,10 +274,10 @@ export function CurrencyRates() {
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
           <Box>
             <Typography variant={isMobile ? 'h5' : 'h4'} gutterBottom>
-              Currency Exchange Rates
+              Текущие курсы валют
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Last updated: {lastUpdate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+              Последнее обновление: {lastUpdate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
             </Typography>
           </Box>
           <MuiTooltip title="Refresh rates">

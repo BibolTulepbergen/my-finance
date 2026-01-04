@@ -13,7 +13,7 @@ import {
   ListItemText,
   IconButton,
   useMediaQuery,
-  useTheme,
+  useTheme as useMuiTheme,
   Fab,
   Paper,
   BottomNavigation,
@@ -26,7 +26,10 @@ import {
   Receipt,
   Add as AddIcon,
   ShowChart,
+  Brightness4,
+  Brightness7,
 } from '@mui/icons-material';
+import { useTheme } from '../contexts/ThemeContext';
 import { Capacitor } from '@capacitor/core';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AccountList } from '../components/accounts/AccountList';
@@ -57,8 +60,9 @@ const BOTTOM_NAV_ITEMS = [
 type BottomNavValue = (typeof BOTTOM_NAV_ITEMS)[number]['value'];
 
 export function Dashboard() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const muiTheme = useMuiTheme();
+  const { mode, toggleTheme } = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const isNativeApp = Capacitor.getPlatform() !== 'web';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountFormOpen, setAccountFormOpen] = useState(false);
@@ -175,9 +179,17 @@ export function Dashboard() {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Финансовый трекер
           </Typography>
+          <IconButton
+            color="inherit"
+            onClick={toggleTheme}
+            sx={{ ml: 1 }}
+            title={mode === 'dark' ? 'Переключить на светлую тему' : 'Переключить на темную тему'}
+          >
+            {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+          </IconButton>
         </Toolbar>
       </AppBar>
 
